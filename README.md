@@ -81,6 +81,14 @@ Use lead tools for Form / Call Lead writes. Raw Mongo mutations would skip Sheet
 
 Later slices: Granot syncs, Owner Registry items, booking cases.
 
+## Scoped Sales Intelligence (CSI-17)
+
+The dedicated `/api/intelligence-mcp` endpoint exposes twelve tools: `get_intelligence_context`, `get_call_transcript`, `list_number_activity`, `search_leads`, `get_lead`, `search_bookings`, `get_booking`, `get_rep_identity`, `query_operational_records`, `search_ringcentral_calls`, `get_ringcentral_call`, and `submit_intelligence_analysis`. A run's signed tool allowlist can narrow discovery and invocation further.
+
+It publishes prompt `sales_intelligence_analyze_v1` and resource `csi://schemas/csi-envelope-v1`. Contracts are generated from main-server schemas, including tool arguments. The server is the semantic authority and validates refinements/evidence after MCP shape validation. This endpoint has no general Mongo, arbitrary HTTP, Lead mutation, Owner command or messaging tools. The general endpoint remains separate and rejects intelligence credentials.
+
+See [intelligence contract and synthetic requests](docs/intelligence-mcp.md). CSI-13 model execution and effect application remain separate work; acceptance of a submission is not application success. No deployment or live RingCentral proof is implied.
+
 ## Local
 
 ```bash

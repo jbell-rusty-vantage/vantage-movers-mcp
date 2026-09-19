@@ -99,3 +99,14 @@ export type EnvMap = Record<string, string | undefined>;
 export function isProductionRuntime(env: EnvMap = process.env): boolean {
   return env.VERCEL_ENV === "production";
 }
+
+/** The general endpoint must never accept the dedicated intelligence identity, including in local permissive mode. */
+export function isIntelligenceCredential(request: Request, env: EnvMap = process.env): boolean {
+  if (request.headers.has("x-vantage-intelligence-run-token")) return true;
+  const provided = extractApiSecretFromRequest(request)?.secret;
+  if (!provided) return false;
+  if (env.SALES_INTELLIGENCE_SCOPED_API_KEY && secretsEqual(provided, env.SALES_INTELLIGENCE_SCOPED_API_KEY)) return true;
+  try {
+    return JSON.parse(Buffer.from(provided.split(".")[0]!, "base64url").toString("utf8"))?.version === "csi-run-token-v1";
+  } catch { return false; }
+}
