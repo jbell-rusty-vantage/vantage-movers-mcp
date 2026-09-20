@@ -17,8 +17,9 @@ export const runClaimsSchema = z.object({
   lease_epoch: z.number().int().positive(),
 }).strict();
 export type RunClaims = z.infer<typeof runClaimsSchema>;
+export type IntelligenceIssue = Readonly<{ path: string; code: string }>;
 export class IntelligenceError extends Error {
-  constructor(readonly code: string, readonly status = 403) { super(code); }
+  constructor(readonly code: string, readonly status = 403, readonly issues?: readonly IntelligenceIssue[]) { super(code); }
 }
 export type IntelligenceCredentials = Readonly<{ claims: RunClaims; token: string; apiSecret: string }>;
 

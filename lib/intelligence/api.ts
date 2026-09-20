@@ -1,6 +1,17 @@
-import { IntelligenceError, type IntelligenceCredentials } from "./auth";
+import { IntelligenceError, type IntelligenceCredentials, type IntelligenceIssue } from "./auth";
 import type { EnvMap } from "../auth";
 
+const ISSUE_PATH = /^[A-Za-z0-9_.:[\]]{1,160}$/;
+function sanitizedIssues(raw: unknown): IntelligenceIssue[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const issues = raw.slice(0, 16).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const path = typeof (item as { path?: unknown }).path === "string" ? (item as { path: string }).path.slice(0, 160) : "";
+    const code = typeof (item as { code?: unknown }).code === "string" ? (item as { code: string }).code.slice(0, 48) : "";
+    return path && code && ISSUE_PATH.test(path) ? [{ path, code }] : [];
+  });
+  return issues.length ? issues : undefined;
+}
 const SAFE_CODES = new Set([
   "FEATURE_DISABLED",
   "INVALID_INPUT",
@@ -87,6 +98,7 @@ export function createIntelligenceApi(
         throw new IntelligenceError(
           SAFE_CODES.has(data?.code) ? data.code : "INTELLIGENCE_UNAVAILABLE",
           response.status >= 400 ? response.status : 503,
+          sanitizedIssues(data?.issues),
         );
       return data?.ok === true ? data.data : data;
     } catch (error) {

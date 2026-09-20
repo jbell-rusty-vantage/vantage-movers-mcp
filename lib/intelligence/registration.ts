@@ -107,12 +107,26 @@ export function registerIntelligenceCapabilities(
         } catch (error) {
           const code =
             error instanceof IntelligenceError ? error.code : "INVALID_INPUT";
+          const issues =
+            error instanceof IntelligenceError
+              ? error.issues
+              : error instanceof z.ZodError
+                ? error.issues.slice(0, 16).flatMap((issue) => {
+                    const path = issue.path.map(String).join(".").slice(0, 160);
+                    const issueCode = String(issue.code).slice(0, 48);
+                    return path && issueCode ? [{ path, code: issueCode }] : [];
+                  })
+                : undefined;
           return {
             isError: true,
             content: [
               {
                 type: "text" as const,
-                text: JSON.stringify({ ok: false, code }),
+                text: JSON.stringify({
+                  ok: false,
+                  code,
+                  ...(issues?.length ? { issues } : {}),
+                }),
               },
             ],
           };

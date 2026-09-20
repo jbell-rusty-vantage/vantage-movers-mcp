@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
 import { createIntelligenceHandler } from "./handler";
-import { authenticateIntelligenceRequest, INTELLIGENCE_TOOLS, type RunClaims } from "./auth";
+import { authenticateIntelligenceRequest, IntelligenceError, INTELLIGENCE_TOOLS, type RunClaims } from "./auth";
 import { createIntelligenceApi, type IntelligenceApi } from "./api";
 import { intelligenceContext } from "./context";
 import { PROMPT_VERSION, SCHEMA_DIGEST, SCHEMA_TEXT, SCHEMA_URI, toolSchemas } from "./registration";
@@ -142,6 +142,20 @@ test("generated schemas reject extra operational envelope fields and prompt args
   assert.deepEqual(Object.keys(artifact.tools).sort(), [...INTELLIGENCE_TOOLS].sort());
   assert.equal(toolSchemas.get_intelligence_context.safeParse({run_id: run}).success, false);
   assert.equal(toolSchemas.submit_intelligence_analysis.safeParse({idempotency_key: "synthetic", envelope: {schema_version: "csi-envelope-v1", attention_band: 1}}).success, false);
+});
+
+test("submit INVALID_INPUT forwards sanitized issue paths and never echoes envelope text", async () => {
+  const credentials = authenticateIntelligenceRequest(request("tools/list"), env);
+  const client = createIntelligenceApi({env, fetchImpl: async () => Response.json({
+    ok: false, code: "INVALID_INPUT", error: "I will call you Friday after 2.",
+    issues: [{ path: "envelope.summary.finding_keys.0", code: "custom" }, { path: "secret quote", code: "custom" }],
+  }, {status: 400})});
+  await assert.rejects(() => client(credentials, "submit", {}), error => {
+    assert.ok(error instanceof IntelligenceError);
+    assert.equal(error.code, "INVALID_INPUT");
+    assert.deepEqual(error.issues, [{ path: "envelope.summary.finding_keys.0", code: "custom" }]);
+    return true;
+  });
 });
 
 test("server evidence-limit and provider-read errors remain actionable without exposing response details", async () => {

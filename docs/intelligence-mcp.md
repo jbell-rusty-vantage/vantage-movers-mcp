@@ -67,7 +67,7 @@ The last request fails because the tool is unregistered; directly invoking hidde
 {"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"csi://schemas/csi-envelope-v1"}}
 ```
 
-Submission receipt remains `{run_id,submission_id,application_job_id,status:"submitted"}`. An ambiguous POST is never retried automatically: tool returns `SUBMISSION_DELIVERY_UNKNOWN`; the trusted orchestrator performs GET `/submission` with the same run/key authentication and recovers the immutable receipt. Expired token or lease requires existing trusted orchestration to reacquire valid authority; there is no recovery bypass or model token-mint tool. CSI-13 must implement the separate application consumer; CSI-17 never claims effects applied.
+Submission receipt remains `{run_id,submission_id,application_job_id,status:"submitted"}`. An ambiguous POST is never retried automatically: tool returns `SUBMISSION_DELIVERY_UNKNOWN`; the trusted orchestrator performs GET `/submission` with the same run/key authentication and recovers the immutable receipt. HTTP 400 `INVALID_INPUT` may include sanitized `issues: [{path,code}]` from main-server Zod refinements (JSON Schema cannot express those checks). `IntelligenceError` forwards only those path/code pairs; the submit tool error JSON is `{ok:false,code,issues?}` and never echoes submitted claims, quotes, or received values. Expired token or lease requires existing trusted orchestration to reacquire valid authority; there is no recovery bypass or model token-mint tool. CSI-13 must implement the separate application consumer; CSI-17 never claims effects applied.
 
 ## Validation and rollback
 
