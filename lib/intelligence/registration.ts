@@ -40,7 +40,7 @@ export const toolSchemas = Object.fromEntries(
 
 const descriptions: Record<IntelligenceTool, string> = {
   get_intelligence_context:
-    "Read bounded, captured context for the server-created run subject, including Owner instructions and honest coverage.",
+    "Read bounded, captured context for the server-created run subject, including Owner instructions and honest coverage. Use supplied captured pages first; do not repeat a read already provided by the worker.",
   get_call_transcript:
     "Read an authorized immutable redacted transcript version in bounded pages; preserve uncertainty and incomplete coverage.",
   list_number_activity:
@@ -62,7 +62,7 @@ const descriptions: Record<IntelligenceTool, string> = {
   get_ringcentral_call:
     "Inspect one RingCentral Call Log record already authorized for the run subject; returns redacted metadata, never private recording URLs.",
   submit_intelligence_analysis:
-    "Submit exactly one immutable analysis envelope. Receipt means durable acceptance, not applied effects. On uncertain delivery stop for orchestration status recovery.",
+    "Submit one accepted immutable csi-envelope-v1 analysis using the worker-provided run id as idempotency_key. Include all required nullable fields. Finding keys must be unique and every finding_keys reference must exist. The six summary texts together total at most 4000 characters. Cite only identifiers and field paths exposed by captured snapshots. On explicit INVALID_INPUT repair the reported paths and resubmit the same key within the one-repair allowance; do not gather more evidence during repair. Receipt means durable acceptance, not applied effects. Stop on acceptance, uncertain delivery or any other submit error for orchestration status recovery.",
 };
 
 export function registerIntelligenceCapabilities(
