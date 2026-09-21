@@ -10,7 +10,15 @@ import {
 import { intelligenceContext } from "./context";
 import type { IntelligenceApi } from "./api";
 
-export const SCHEMA_URI = "csi://schemas/csi-envelope-v1";
+/**
+ * The envelope contract is `csi-envelope-v1` and does not change here; what is
+ * versioned is its JSON Schema *rendering*, one resource per revision (22
+ * §4.2). Every revision the generator emitted is served, because a run pins a
+ * digest at preparation and an `original_evidence` replay must be able to read
+ * back exactly the schema its parent was given. A pinned digest this build does
+ * not carry is refused, never answered with a different rendering.
+ */
+export type SchemaRevision = { uri: string; text: string; digest: string };
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === "object")
@@ -24,11 +32,26 @@ function canonical(value: unknown): unknown {
     );
   return value;
 }
+const digestOf = (value: unknown) =>
+  createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+const declared: Record<string, { uri: string; envelope_schema: unknown }> =
+  (artifact as { revisions?: Record<string, { uri: string; envelope_schema: unknown }> }).revisions ??
+  // An artifact generated before revisions existed carries only the current one.
+  { r1: { uri: "csi://schemas/csi-envelope-v1", envelope_schema: artifact.envelope_schema } };
+export const SCHEMA_REVISIONS: SchemaRevision[] = Object.values(declared).map((entry) => ({
+  uri: entry.uri,
+  text: JSON.stringify(canonical(entry.envelope_schema)),
+  digest: digestOf(entry.envelope_schema),
+}));
 export const SCHEMA_TEXT = JSON.stringify(canonical(artifact.envelope_schema));
-export const SCHEMA_DIGEST = createHash("sha256")
-  .update(SCHEMA_TEXT)
-  .digest("hex");
+export const SCHEMA_DIGEST = digestOf(artifact.envelope_schema);
+export const SCHEMA_URI =
+  SCHEMA_REVISIONS.find((revision) => revision.digest === SCHEMA_DIGEST)?.uri ??
+  "csi://schemas/csi-envelope-v1";
 export const PROMPT_VERSION = artifact.prompt_version;
+/** Prompt names still served. A run keeps the one it pinned; see the server's `CSI_PROMPT_VERSIONS`. */
+export const PROMPT_VERSIONS: string[] =
+  (artifact as { prompt_versions?: string[] }).prompt_versions ?? [artifact.prompt_version];
 export const toolSchemas = Object.fromEntries(
   INTELLIGENCE_TOOLS.map((name) => [
     name,
@@ -36,6 +59,25 @@ export const toolSchemas = Object.fromEntries(
       artifact.tools[name] as Parameters<typeof z.fromJSONSchema>[0],
     ),
   ]),
+) as Record<IntelligenceTool, z.ZodType>;
+
+/**
+ * Publish the generated JSON Schema verbatim while keeping Zod as the
+ * validator.
+ *
+ * `tools/list` is what reaches the model on every step, and the submit tool
+ * embeds the whole envelope schema. Letting the SDK re-derive that schema from
+ * the reconstructed Zod type inlines every `$ref` the generator hoisted, which
+ * would put 41 KB back on the wire for a contract that is byte-identical at
+ * 17 KB. Validation is untouched: the same Zod type still checks every call.
+ */
+function publishedSchema(schema: z.ZodType, json: unknown): z.ZodType {
+  const standard = (schema as unknown as { "~standard": Record<string, unknown> })["~standard"];
+  const converter = { input: () => json as Record<string, unknown>, output: () => json as Record<string, unknown> };
+  return { "~standard": { ...standard, jsonSchema: converter } } as unknown as z.ZodType;
+}
+const publishedToolSchemas = Object.fromEntries(
+  INTELLIGENCE_TOOLS.map((name) => [name, publishedSchema(toolSchemas[name], artifact.tools[name])]),
 ) as Record<IntelligenceTool, z.ZodType>;
 
 const descriptions: Record<IntelligenceTool, string> = {
@@ -76,7 +118,7 @@ export function registerIntelligenceCapabilities(
       name,
       {
         description: descriptions[name],
-        inputSchema: toolSchemas[name],
+        inputSchema: publishedToolSchemas[name],
         annotations: {
           readOnlyHint: name !== "submit_intelligence_analysis",
           destructiveHint: false,
@@ -134,26 +176,29 @@ export function registerIntelligenceCapabilities(
       },
     );
   }
-  server.registerResource(
-    "csi-envelope-v1",
-    SCHEMA_URI,
-    {
-      description:
-        "Generated frozen main-server envelope schema; server additionally validates refinements and evidence authority.",
-      mimeType: "application/schema+json",
-    },
-    async (uri) => ({
-      contents: [
-        {
-          uri: uri.href,
-          mimeType: "application/schema+json",
-          text: SCHEMA_TEXT,
-        },
-      ],
-    }),
-  );
+  for (const revision of SCHEMA_REVISIONS) {
+    server.registerResource(
+      revision.uri,
+      revision.uri,
+      {
+        description:
+          "Generated frozen main-server envelope schema; server additionally validates refinements and evidence authority.",
+        mimeType: "application/schema+json",
+      },
+      async (uri) => ({
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: "application/schema+json",
+            text: revision.text,
+          },
+        ],
+      }),
+    );
+  }
+  for (const version of PROMPT_VERSIONS) {
   server.registerPrompt(
-    PROMPT_VERSION,
+    version,
     {
       description:
         "Retrieve the exact server-pinned prompt. CSI-13 must explicitly load and persist this text and schema digest before invoking its model.",
@@ -161,14 +206,16 @@ export function registerIntelligenceCapabilities(
     },
     async () => {
       const pinned = intelligenceContext().status.prompt_context;
+      // The run's own pinned version and digest decide, not this build's
+      // current ones: a replay asks for what its parent was asked.
       if (
-        pinned.prompt_version !== PROMPT_VERSION ||
+        pinned.prompt_version !== version ||
         pinned.schema_version !== artifact.schema_version ||
-        pinned.schema_digest !== SCHEMA_DIGEST
+        !SCHEMA_REVISIONS.some((revision) => revision.digest === pinned.schema_digest)
       )
         throw new IntelligenceError("ORIGINAL_EVIDENCE_UNAVAILABLE", 422);
       return {
-        description: PROMPT_VERSION,
+        description: version,
         messages: [
           {
             role: "user" as const,
@@ -184,4 +231,5 @@ export function registerIntelligenceCapabilities(
       };
     },
   );
+  }
 }

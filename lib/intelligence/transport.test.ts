@@ -5,7 +5,7 @@ import { createIntelligenceHandler } from "./handler";
 import { authenticateIntelligenceRequest, IntelligenceError, INTELLIGENCE_TOOLS, type RunClaims } from "./auth";
 import { createIntelligenceApi, type IntelligenceApi } from "./api";
 import { intelligenceContext } from "./context";
-import { PROMPT_VERSION, SCHEMA_DIGEST, SCHEMA_TEXT, SCHEMA_URI, toolSchemas } from "./registration";
+import { PROMPT_VERSION, PROMPT_VERSIONS, SCHEMA_DIGEST, SCHEMA_REVISIONS, SCHEMA_TEXT, SCHEMA_URI, toolSchemas } from "./registration";
 import artifact from "./generated/intelligence-contract-v1.json";
 import { isIntelligenceCredential, authenticateApiSecret } from "../auth";
 import { POST as generalMcpPost } from "../../app/api/mcp/route";
@@ -32,8 +32,19 @@ test("dedicated actual MCP transport discovers exactly authorized tools, prompt 
   const handler = createIntelligenceHandler({env, api});
   const tools = await rpc(await handler(request("tools/list")));
   assert.deepEqual(tools.result.tools.map((tool: {name:string}) => tool.name).sort(), [...INTELLIGENCE_TOOLS].sort());
-  assert.deepEqual((await rpc(await handler(request("prompts/list")))).result.prompts.map((p:{name:string}) => p.name), [PROMPT_VERSION]);
-  assert.deepEqual((await rpc(await handler(request("resources/list")))).result.resources.map((r:{uri:string}) => r.uri), [SCHEMA_URI]);
+  // Every served prompt version and schema revision is discoverable: a run
+  // pinned to an older one must still be able to read back exactly what it was
+  // given, and the current one must be among them (22 §4.2, §4.3).
+  const prompts = (await rpc(await handler(request("prompts/list")))).result.prompts.map((p:{name:string}) => p.name);
+  assert.deepEqual(prompts.sort(), [...PROMPT_VERSIONS].sort());
+  assert.ok(prompts.includes(PROMPT_VERSION));
+  const resources = (await rpc(await handler(request("resources/list")))).result.resources.map((r:{uri:string}) => r.uri);
+  assert.deepEqual(resources.sort(), SCHEMA_REVISIONS.map(revision => revision.uri).sort());
+  assert.ok(resources.includes(SCHEMA_URI));
+  for (const revision of SCHEMA_REVISIONS) {
+    const served = await rpc(await handler(request("resources/read", {uri: revision.uri})));
+    assert.equal(served.result.contents[0].text, revision.text, revision.uri);
+  }
   const resource = await rpc(await handler(request("resources/read", {uri: SCHEMA_URI})));
   assert.equal(resource.result.contents[0].text, SCHEMA_TEXT);
   assert.equal(SCHEMA_DIGEST, artifact.schema_digest);
