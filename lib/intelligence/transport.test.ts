@@ -28,6 +28,14 @@ async function rpc(response: Response): Promise<Record<string, any>> {
 }
 const api: IntelligenceApi = async (credentials, action, body) => action === "submission" ? status(credentials.claims) : {action, run_id: credentials.claims.run_id, body, snapshot_id: "bbbbbbbbbbbbbbbbbbbbbbbb"};
 
+test("unsupported SSE GET rejects locally without a downstream authority read", async () => {
+  let reads = 0;
+  const handler = createIntelligenceHandler({env, api: async credentials => { reads++; return status(credentials.claims); }});
+  const response = await handler(new Request("http://localhost/api/intelligence-mcp", {method: "GET", headers: request("initialize").headers}));
+  assert.equal(response.status, 405);
+  assert.equal(reads, 0);
+});
+
 test("dedicated actual MCP transport discovers exactly authorized tools, prompt and generated schema", async () => {
   const handler = createIntelligenceHandler({env, api});
   const tools = await rpc(await handler(request("tools/list")));
@@ -135,7 +143,8 @@ test("actual general MCP endpoint denies intelligence headers and preserves inte
   }
 });
 
-test("API has no production default, forwards both credentials, rejects redirects and never retries uncertain submit", async () => {
+test("API has no production default, forwards both credentials, rejects redirects and never retries uncertain submit", async (t) => {
+  const timeout = t.mock.method(AbortSignal, "timeout");
   const credentials = authenticateIntelligenceRequest(request("tools/list"), env);
   let calls = 0;
   const client = createIntelligenceApi({env, fetchImpl: async (url, init) => {
@@ -146,6 +155,7 @@ test("API has no production default, forwards both credentials, rejects redirect
   }});
   await assert.rejects(() => client(credentials, "submit", {}), /SUBMISSION_DELIVERY_UNKNOWN/);
   assert.equal(calls, 1);
+  assert.equal(timeout.mock.calls[0]?.arguments[0], 45_000);
   await assert.rejects(() => createIntelligenceApi({env: {}})(credentials, "submission"), /INTELLIGENCE_UNAVAILABLE/);
 });
 

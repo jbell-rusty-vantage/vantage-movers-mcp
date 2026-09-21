@@ -73,6 +73,11 @@ Submission receipt remains `{run_id,submission_id,application_job_id,status:"sub
 
 ## Validation and rollback
 
+Transport requests have a 45-second downstream timeout, with a 120-second function limit for the authorization status read followed by one tool call. The former 20-second timeout was too close to observed production status reads of 17 seconds during backlog processing. This does not retry uncertain submissions or cache lease authority. No environment change or migration is required; reverting the API timeout and route duration restores the previous transport budget.
+
 `pnpm test` covers actual discovery/call denial, original general endpoint behavior, concurrent context isolation, signature/dataset/expiry errors, generated schema/prompt and safe uncertain delivery. `pnpm typecheck` is available; no lint script exists. A production bundle was built from an isolated source copy excluding all `.env*` files, with only synthetic config and loopback data endpoints. Exact results and environment caveat are in main-server `docs/call-sales-intelligence/workspace/evidence/csi-17/MCP-CHECKS.md`.
 
 No new dependencies, database migrations or deployed configuration were applied. Rollback removes the dedicated route or keeps server feature/provider flags off while preserving immutable evidence/submissions/jobs. The existing general endpoint stays available to intended broad clients. No commit, push, deploy, live model/provider/database call, credential provisioning or message was performed.
+# Unsupported transport probes
+
+The dedicated endpoint supports POST only. GET/SSE probes return 405 locally before any downstream authority read; they expose no capability or data. Every POST still validates the signed credential and the current stored run/lease. This removes repeated failed SSE connection probes from the main-server/Mongo request load.

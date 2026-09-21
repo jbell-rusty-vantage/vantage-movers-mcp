@@ -14,6 +14,9 @@ const statusSchema = z.object({
 export function createIntelligenceHandler(options: { env?: EnvMap; api?: IntelligenceApi } = {}) {
   const api = options.api ?? createIntelligenceApi({ env: options.env });
   return async (request: Request): Promise<Response> => {
+    // This endpoint has no SSE subscription transport. SDK connection probes
+    // must not spend a main-server/database authority read just to return 405.
+    if (request.method !== "POST") return new Response(null, { status: 405, headers: { allow: "POST", "cache-control": "no-store" } });
     try {
       const credentials = authenticateIntelligenceRequest(request, options.env);
       // Pure server status read rechecks stored run/nonce/active lease even for discovery.

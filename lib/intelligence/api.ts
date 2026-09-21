@@ -36,6 +36,7 @@ export function createIntelligenceApi(
   options: { env?: EnvMap; fetchImpl?: typeof fetch } = {},
 ): IntelligenceApi {
   return async (credentials, action, body) => {
+    const started = Date.now();
     try {
       const env = options.env ?? process.env;
       const configured = env.SALES_INTELLIGENCE_API_BASE_URL;
@@ -69,7 +70,9 @@ export function createIntelligenceApi(
             "x-vantage-intelligence-run-token": credentials.token,
           },
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-          signal: AbortSignal.timeout(20_000),
+          // Production authority reads can take ~17s under backlog load. Allow
+          // headroom; a handler performs this check plus one bounded tool call.
+          signal: AbortSignal.timeout(45_000),
           redirect: "error",
           cache: "no-store",
         },
@@ -102,6 +105,9 @@ export function createIntelligenceApi(
         );
       return data?.ok === true ? data.data : data;
     } catch (error) {
+      console.warn(JSON.stringify({ event: "intelligence_mcp.downstream_failure", action, elapsed_ms: Date.now() - started,
+        kind: error instanceof IntelligenceError ? error.code : error instanceof Error ? error.name : "unknown",
+        status: error instanceof IntelligenceError ? error.status : null }));
       if (error instanceof IntelligenceError) throw error;
       // Includes uncertain delivery: no automatic POST retry and no provider body or credential echo.
       throw new IntelligenceError(
