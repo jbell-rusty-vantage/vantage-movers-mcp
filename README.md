@@ -102,6 +102,14 @@ pnpm dev
 
 MCP URL locally: `http://localhost:3100/api/mcp`
 
+## Deploy
+
+Production is Vercel CLI only. The project is not Git-connected. Agents follow [`.agents/skills/deploy-vantage-movers-mcp/SKILL.md`](../.agents/skills/deploy-vantage-movers-mcp/SKILL.md).
+
+```bash
+npx --yes vercel --prod --yes --scope vantage-4d3db9ef
+```
+
 ## Environment
 
 | Name | Where | Role |
