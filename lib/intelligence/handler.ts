@@ -5,6 +5,7 @@ import { authenticateIntelligenceRequest, IntelligenceError } from "./auth";
 import { createIntelligenceApi, type IntelligenceApi } from "./api";
 import { runWithIntelligenceContext } from "./context";
 import { registerIntelligenceCapabilities } from "./registration";
+import { VANTAGE_COMPANY_CONTEXT } from "../company";
 
 const statusSchema = z.object({
   run_id: z.string(), status: z.enum(["running", "submitted"]), submission: z.unknown().nullable(),
@@ -24,7 +25,7 @@ export function createIntelligenceHandler(options: { env?: EnvMap; api?: Intelli
       if (status.run_id !== credentials.claims.run_id) throw new IntelligenceError("RUN_SCOPE_DENIED");
       return await runWithIntelligenceContext({ ...credentials, status }, () => {
         // Never share a mutable SDK registry between identities or concurrent requests.
-        const handler = createMcpHandler(server => registerIntelligenceCapabilities(server, api), { serverInfo: { name: "vantage-intelligence-mcp", version: "1.0.0" }, maxSubscriptions: 0 });
+        const handler = createMcpHandler(server => registerIntelligenceCapabilities(server, api), { serverInfo: { name: "vantage-intelligence-mcp", version: "1.0.0" }, instructions: VANTAGE_COMPANY_CONTEXT, maxSubscriptions: 0 });
         return handler(request);
       });
     } catch (error) {
