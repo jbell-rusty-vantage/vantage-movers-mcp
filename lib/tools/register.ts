@@ -16,6 +16,7 @@ import {
   updateLead,
   updateLeadInputSchema,
 } from "./leads";
+import { HISTORY_TOOLS } from "./history";
 import {
   mongoAggregateInputSchema,
   mongoAggregateTool,
@@ -131,6 +132,15 @@ export function registerVantageTools(server: McpServer) {
     wrap(deleteLead),
   );
 
+  // Read-only history over the main server's history routes (spec §8.2); never Mongo.
+  for (const tool of HISTORY_TOOLS) {
+    server.registerTool(
+      tool.name,
+      { title: tool.title, description: tool.description, inputSchema: tool.inputSchema },
+      wrap(tool.run as (input: unknown) => Promise<unknown>),
+    );
+  }
+
   server.registerTool(
     "mongo_list_databases",
     {
@@ -147,7 +157,7 @@ export function registerVantageTools(server: McpServer) {
     {
       title: "MongoDB list collections",
       description:
-        "Read-only collection list for a database. Defaults to vantageovers unless TEST_MODE is on.",
+        "Read-only collection list for a database. Defaults to vantagemovers unless TEST_MODE is on.",
       inputSchema: mongoListCollectionsInputSchema,
     },
     wrap(mongoListCollectionsTool),

@@ -79,6 +79,22 @@ Use lead tools for Form / Call Lead writes. Raw Mongo mutations would skip Sheet
 | `delete_lead` | `DELETE /api/v1/{form,call}-leads/:id` |
 | `vantage_health` | `GET /health`, `GET /db` |
 
+## History tools (read-only)
+
+The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). They return names, E.164 numbers, job numbers, summaries, findings and story prose, and never transcript text, Lead Message bodies or emails.
+
+| Tool | Backend | Use it for |
+| --- | --- | --- |
+| `find_contact_number` | `GET …/history/contact-number` | Phone or id → Contact Number, attachment edges, Outreach records, running summary |
+| `get_subject_story` | `GET …/history/story` | Deterministic chronology of a number or Lead (prose + cited events + Granot state + candidates). Start here. |
+| `find_lead_candidates` | `GET …/history/lead-candidates` | Which Leads a number could belong to |
+| `list_analyses` | `GET …/history/analyses` | Intelligence runs for a number, newest first, cursor-paged |
+| `get_analysis` | `GET …/history/analyses/:id` | One run: envelope, exact model object when retained, findings, effects, summaries |
+| `get_conversation` | `GET …/history/conversations/:id` | One call without transcript: metadata, canonical summary, findings |
+| `get_move_assessment` | `GET …/history/move-assessment` | Newest published Move assessment for a subject |
+| `get_lead_history` | `GET …/history/lead` | Lead projection, attachments, entity changes, Granot observations, bookings, messages (no bodies), conversations, Outreach |
+| `get_prior_analyses` | `GET …/history/prior` | The prior-analysis page a run would be shown |
+
 Later slices: Granot syncs, Owner Registry items, booking cases.
 
 ## Scoped Sales Intelligence (CSI-17)

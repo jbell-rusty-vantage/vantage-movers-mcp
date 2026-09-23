@@ -17,6 +17,7 @@ The server verifies that value against the `VANTAGE_API_SECRET` env var (require
 
 - Lead search, list, get, create, update, delete for Form Leads and Call Leads
 - `vantage_health`
+- Read-only history tools over the main server's `/api/v1/internal/sales-intelligence/history/*` routes: `find_contact_number`, `get_subject_story`, `find_lead_candidates`, `list_analyses`, `get_analysis`, `get_conversation`, `get_move_assessment`, `get_lead_history`, `get_prior_analyses`. The general endpoint stays read-only for history; nothing returns transcript text, a Lead Message body or an email.
 - Read-only Mongo tools named after the official MongoDB MCP server: list databases / collections, schema, indexes, find, aggregate, count, db stats
 
 `$out` and `$merge` are blocked. Lead mutations must not use `mongo_find` / `mongo_aggregate`.
