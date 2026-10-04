@@ -81,29 +81,17 @@ Use lead tools for Form / Call Lead writes. Raw Mongo mutations would skip Sheet
 
 ## History tools (read-only)
 
-The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). They return names, E.164 numbers, job numbers, summaries, findings and story prose, and never transcript text, Lead Message bodies or emails.
+The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). They return canonical records and provider metadata: names, E.164 numbers, job numbers, attachments, entity changes, Granot observations, bookings and message metadata. They never return call analyses, conversations, Move assessments, Outreach records, transcript text, Lead Message bodies or emails.
 
 | Tool | Backend | Use it for |
 | --- | --- | --- |
-| `find_contact_number` | `GET …/history/contact-number` | Phone or id → Contact Number, attachment edges, Outreach records, running summary |
-| `get_subject_story` | `GET …/history/story` | Deterministic chronology of a number or Lead (prose + cited events + Granot state + candidates). Start here. |
+| `find_contact_number` | `GET …/history/contact-number` | Phone or id → Contact Number, call rollups, attachment edges. Start here. |
 | `find_lead_candidates` | `GET …/history/lead-candidates` | Which Leads a number could belong to |
-| `list_analyses` | `GET …/history/analyses` | Intelligence runs for a number, newest first, cursor-paged |
-| `get_analysis` | `GET …/history/analyses/:id` | One run: envelope, exact model object when retained, findings, effects, summaries |
-| `get_conversation` | `GET …/history/conversations/:id` | One call without transcript: metadata, canonical summary, findings |
-| `get_move_assessment` | `GET …/history/move-assessment` | Newest published Move assessment for a subject |
-| `get_lead_history` | `GET …/history/lead` | Lead projection, attachments, entity changes, Granot observations, bookings, messages (no bodies), conversations, Outreach |
-| `get_prior_analyses` | `GET …/history/prior` | The prior-analysis page a run would be shown |
+| `get_lead_history` | `GET …/history/lead` | Lead projection, attachments, entity changes, Granot observations, bookings, cancellations, messages (no bodies) |
+
+The server-slimming release (2026-10) retired the AI analysis tools `list_analyses`, `get_analysis`, `get_conversation`, `get_move_assessment`, `get_prior_analyses` and `get_subject_story`, and the scoped `/api/intelligence-mcp` endpoint with its envelope schema and analysis prompt. The main server removes their routes in the same release. This build only calls the three retained routes, which exist before and after that server change, so it can deploy first.
 
 Later slices: Granot syncs, Owner Registry items, booking cases.
-
-## Scoped Sales Intelligence (CSI-17)
-
-The dedicated `/api/intelligence-mcp` endpoint exposes twelve tools: `get_intelligence_context`, `get_call_transcript`, `list_number_activity`, `search_leads`, `get_lead`, `search_bookings`, `get_booking`, `get_rep_identity`, `query_operational_records`, `search_ringcentral_calls`, `get_ringcentral_call`, and `submit_intelligence_analysis`. A run's signed tool allowlist can narrow discovery and invocation further.
-
-It publishes prompt `sales_intelligence_analyze_v1` and resource `csi://schemas/csi-envelope-v1`. Contracts are generated from main-server schemas, including tool arguments. The server is the semantic authority and validates refinements/evidence after MCP shape validation. This endpoint has no general Mongo, arbitrary HTTP, Lead mutation, Owner command or messaging tools. The general endpoint remains separate and rejects intelligence credentials.
-
-See [intelligence contract and synthetic requests](docs/intelligence-mcp.md). CSI-13 model execution and effect application remain separate work; acceptance of a submission is not application success. No deployment or live RingCentral proof is implied.
 
 ## Local
 

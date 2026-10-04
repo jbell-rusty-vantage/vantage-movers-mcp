@@ -1,7 +1,6 @@
 /**
- * Trusted company identity the MCP servers hand to any agent that connects. Mirrors
- * `vantage-main-server/src/services/salesIntelligence/companyContext.ts`; evidence never
- * establishes who the rep works for, this text does.
+ * Instructions the general MCP endpoint hands to every agent that connects: who the business is
+ * and which tools own which job.
  */
 export const VANTAGE_COMPANY_NAME = "Vantage Movers LLC";
-export const VANTAGE_COMPANY_CONTEXT = `Company context (trusted, supplied by the server, not evidence): the business behind these tools and calls is ${VANTAGE_COMPANY_NAME} (referred to as Vantage or Vantage Movers), a licensed moving broker headquartered in Boynton Beach, Florida. Vantage helps people move: its sales reps talk with the customer, take the household inventory, price the move and set the move up (book it) with a carrier that performs the move. On every call the rep speaks for Vantage Movers and the customer is the person moving. Refer to the company only as Vantage Movers; never attribute the rep, the quote or the call to any other company. A carrier, another mover or a competitor named on a call is not Vantage; any other company name in the evidence describes the customer's situation, never the rep's employer.`;
+export const VANTAGE_SERVER_INSTRUCTIONS = `These tools serve ${VANTAGE_COMPANY_NAME} (Vantage or Vantage Movers), a licensed moving broker headquartered in Boynton Beach, Florida. Its sales reps talk with the customer, take the household inventory, price the move and book it with a carrier that performs the move. A carrier, another mover or a competitor named in a record is not Vantage. Form Leads and Call Leads are written only through the lead tools, so duplicate detection, Sheet Sync and CRM posting stay on the Vantage API; the Mongo tools are read-only. To answer a question about a customer or a phone number, start with find_contact_number, find_lead_candidates or get_lead_history before any Mongo query.`;

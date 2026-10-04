@@ -132,7 +132,7 @@ export function registerVantageTools(server: McpServer) {
     wrap(deleteLead),
   );
 
-  // Read-only history over the main server's history routes (spec §8.2); never Mongo.
+  // Read-only canonical history over the main server's history routes; never Mongo.
   for (const tool of HISTORY_TOOLS) {
     server.registerTool(
       tool.name,

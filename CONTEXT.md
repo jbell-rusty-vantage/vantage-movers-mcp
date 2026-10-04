@@ -17,13 +17,7 @@ The server verifies that value against the `VANTAGE_API_SECRET` env var (require
 
 - Lead search, list, get, create, update, delete for Form Leads and Call Leads
 - `vantage_health`
-- Read-only history tools over the main server's `/api/v1/internal/sales-intelligence/history/*` routes: `find_contact_number`, `get_subject_story`, `find_lead_candidates`, `list_analyses`, `get_analysis`, `get_conversation`, `get_move_assessment`, `get_lead_history`, `get_prior_analyses`. The general endpoint stays read-only for history; nothing returns transcript text, a Lead Message body or an email.
+- Read-only history tools over the main server's `/api/v1/internal/sales-intelligence/history/*` routes: `find_contact_number`, `find_lead_candidates`, `get_lead_history`. They return canonical records and provider metadata only; nothing returns an analysis, a conversation, a Move assessment, an Outreach record, transcript text, a Lead Message body or an email.
 - Read-only Mongo tools named after the official MongoDB MCP server: list databases / collections, schema, indexes, find, aggregate, count, db stats
 
 `$out` and `$merge` are blocked. Lead mutations must not use `mongo_find` / `mongo_aggregate`.
-
-## CSI-17 intelligence endpoint
-
-`/api/intelligence-mcp` is separate from the general endpoint above. It exposes the server-generated twelve-tool contract, `sales_intelligence_analyze_v1` prompt and `csi://schemas/csi-envelope-v1` resource. Every request verifies the signed run credential and a dedicated key, then revalidates stored run/nonce/lease at main server. Request contexts and registries are isolated. Intelligence credentials are denied `/api/mcp` even in local permissive mode.
-
-Main server owns relevance, immutable evidence capture, historical identity, one durable submission and downstream application. MCP contains no domain writes, Mongo access, provider client, model invocation or message capability. `query_operational_records` offers named, bounded datasets and literal text search rather than arbitrary Mongo queries. `search_ringcentral_calls` and `get_ringcentral_call` use server-owned fixed read adapters; the provider flag defaults off. See README and `docs/intelligence-mcp.md` for setup, contracts and local proof.

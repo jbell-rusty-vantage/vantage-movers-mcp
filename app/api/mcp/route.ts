@@ -3,11 +3,10 @@ import {
   authenticateApiSecret,
   extractApiSecretFromRequest,
   isProductionRuntime,
-  isIntelligenceCredential,
 } from "@/lib/auth";
 import { runWithRequestContext } from "@/lib/request-context";
 import { registerVantageTools } from "@/lib/tools/register";
-import { VANTAGE_COMPANY_CONTEXT } from "@/lib/company";
+import { VANTAGE_SERVER_INSTRUCTIONS } from "@/lib/company";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -21,7 +20,7 @@ const mcpHandler = createMcpHandler(
       name: "vantage-movers-mcp",
       version: "0.1.0",
     },
-    instructions: VANTAGE_COMPANY_CONTEXT,
+    instructions: VANTAGE_SERVER_INSTRUCTIONS,
   },
 );
 
@@ -30,7 +29,6 @@ function unauthorizedResponse(status: number, error: string) {
 }
 
 async function handleMcp(request: Request) {
-  if (isIntelligenceCredential(request)) return unauthorizedResponse(403, "RUN_SCOPE_DENIED");
   const decision = authenticateApiSecret({
     provided: extractApiSecretFromRequest(request),
     expectedSecret: process.env.VANTAGE_API_SECRET,
