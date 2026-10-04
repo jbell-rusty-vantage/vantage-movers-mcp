@@ -81,7 +81,7 @@ Use lead tools for Form / Call Lead writes. Raw Mongo mutations would skip Sheet
 
 ## History tools (read-only)
 
-The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). They return canonical records and provider metadata: names, E.164 numbers, job numbers, attachments, entity changes, Granot observations, bookings and message metadata. They never return call analyses, conversations, Move assessments, Outreach records, transcript text, Lead Message bodies or emails.
+The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). The server answers 404 on them while its `SALES_INTELLIGENCE_ENABLED` flag is off, and refuses the retired Sales Intelligence scoped key. They return canonical records and provider metadata: names, E.164 numbers, job numbers, attachments, entity changes, Granot observations, bookings and message metadata. They never return call analyses, conversations, Move assessments, Outreach records, transcript text, Lead Message bodies or emails.
 
 | Tool | Backend | Use it for |
 | --- | --- | --- |
