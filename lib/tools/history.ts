@@ -64,7 +64,7 @@ export const HISTORY_TOOLS = [
     name: "find_contact_number",
     title: "Find contact number",
     description:
-      "Resolve a phone number (any format) or a Contact Number id to the Contact Number record: E.164, classification, contact eligibility, caller-ID names, first and last activity, call rollups from provider metadata (calls in and out, calls a person answered, last inbound and outbound call, attached and candidate Lead counts) and every attachment edge to a Lead (state, certainty, evidence, Lead snapshot, review decision). Use this first to turn a phone number into ids for find_lead_candidates and get_lead_history.",
+      "Resolve a phone number (any format) or a Contact Number id to the Contact Number record: E.164, caller-ID names, first and last activity, the call summary (calls in, out and missed, the last call, last inbound and outbound call, waiting_since when a missed call is still waiting on us), its current Lead, other Leads with the same phone and how the link was set (automatic or Owner pin, plus Leads the Owner unlinked). Use this first to turn a phone number into ids for find_lead_candidates and get_lead_history.",
     inputSchema: findContactNumberInputSchema,
     run: findContactNumber,
   },
@@ -72,7 +72,7 @@ export const HISTORY_TOOLS = [
     name: "find_lead_candidates",
     title: "Find lead candidates",
     description:
-      "Which Leads could this phone number belong to? Uses the indexed phone paths of Form and Call Leads, the caller-ID name and, when given, a name the customer stated or a reference they mentioned (form, job number). Each candidate carries its basis, attachment state, duplicate/booked/cancelled flags, received time and source. Use when a number has no attached Lead or the attachment is ambiguous.",
+      "Which Leads could this phone number belong to? Uses the indexed phone paths of Form and Call Leads, the caller-ID name and, when given, a name the customer stated or a reference they mentioned (form, job number). Each candidate carries its basis, its link to the number (link: lead, other_lead, excluded when the Owner unlinked it, or null), duplicate/booked/cancelled flags, received time and source. Use when a number has no Lead or the wrong one.",
     inputSchema: findLeadCandidatesInputSchema,
     run: findLeadCandidates,
   },
@@ -80,7 +80,7 @@ export const HISTORY_TOOLS = [
     name: "get_lead_history",
     title: "Get lead history",
     description:
-      "One Form Lead or Call Lead with what Vantage recorded about it: the Lead projection (name, phone, job number, source, Granot Priority, quoted, move views, receiving rep, flags; never the email), attachment edges to Contact Numbers, the newest 50 entity changes with before/after per path and source system, the newest 20 Granot observations for its job number, bookings, cancellations and Lead Messages (purpose, status, timestamps; never the body). Use instead of get_lead when the past matters.",
+      "One Form Lead or Call Lead with what Vantage recorded about it: the Lead projection (name, phone, job number, source, Granot Priority, quoted, move views, receiving rep, flags; never the email), the Contact Numbers that link to it, the newest 50 entity changes with before/after per path and source system, the newest 20 Granot observations for its job number, bookings, cancellations and Lead Messages (purpose, status, timestamps; never the body). Use instead of get_lead when the past matters.",
     inputSchema: getLeadHistoryInputSchema,
     run: getLeadHistory,
   },
