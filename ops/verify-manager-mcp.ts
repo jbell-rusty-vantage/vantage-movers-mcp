@@ -83,6 +83,8 @@ for (const kind of ["form", "call"]) {
     check(detail.ok && detail.data.ok, "lead-detail-success");
     const history = await tool("get_lead_history", { model: kind === "form" ? "FormLead" : "CallLead", id: id(lead) });
     check(history.data.data.lead && history.evidence_coverage.complete_history === "not_guaranteed", "history-has-lead-and-coverage");
+    check(history.evidence_coverage.source === "materialized_business_facts" && history.evidence_coverage.includes_granot_observations === false, "materialized-history-contract");
+    check(Array.isArray(history.data.data.changes) && !("granot_observations" in history.data.data), "history-uses-business-facts");
     if (kind === "form") form = history.data.data; else call = history.data.data;
   });
 }
