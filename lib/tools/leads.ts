@@ -89,7 +89,7 @@ export const searchLeadsInputSchema = z
 
 export const createLeadInputSchema = z
   .object({
-    kind: leadKindSchema,
+    kind: z.literal("form"),
     name: optionalString,
     first_name: optionalString,
     last_name: optionalString,
@@ -189,7 +189,11 @@ export async function getLead(input: z.infer<typeof getLeadInputSchema>) {
   return formatVantageApiResult(
     await vantageApi({
       method: "GET",
-      path: `${leadPaths(input.kind).collection}/${input.id}`,
+      // The extension Call API has browse/search/update but no GET /:id.
+      // Its canonical Admin detail read is production-only.
+      path: input.kind === "call"
+        ? `/api/v1/admin/call-leads/${input.id}`
+        : `${leadPaths(input.kind).collection}/${input.id}`,
     }),
   );
 }
@@ -206,6 +210,7 @@ export async function searchLeads(input: z.infer<typeof searchLeadsInputSchema>)
 }
 
 export async function createLead(input: z.infer<typeof createLeadInputSchema>) {
+  createLeadInputSchema.parse(input);
   return formatVantageApiResult(
     await vantageApi({
       method: "POST",

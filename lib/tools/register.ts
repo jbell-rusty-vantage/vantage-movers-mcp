@@ -17,6 +17,7 @@ import {
   updateLeadInputSchema,
 } from "./leads";
 import { HISTORY_TOOLS } from "./history";
+import { BUSINESS_TOOLS } from "./business";
 import {
   mongoAggregateInputSchema,
   mongoAggregateTool,
@@ -46,7 +47,7 @@ function wrap<T>(run: (input: T) => Promise<unknown>) {
   };
 }
 
-export function registerVantageTools(server: McpServer) {
+export function registerVantageTools(server: McpServer, options: { manager?: boolean } = {}) {
   server.registerTool(
     "vantage_health",
     {
@@ -61,6 +62,7 @@ export function registerVantageTools(server: McpServer) {
         vantageApi({ method: "GET", path: "/db" }),
       ]);
       return {
+        ok: health.ok && db.ok,
         health: formatVantageApiResult(health),
         db: formatVantageApiResult(db),
       };
@@ -93,24 +95,24 @@ export function registerVantageTools(server: McpServer) {
     "get_lead",
     {
       title: "Get lead",
-      description: "Fetch one Form Lead or Call Lead by Mongo id.",
+      description: "Fetch one Form Lead or Call Lead by Mongo id. Call detail uses the production Admin read; Form detail follows the main server database configuration.",
       inputSchema: getLeadInputSchema,
     },
     wrap(getLead),
   );
 
-  server.registerTool(
+  if (!options.manager) server.registerTool(
     "create_lead",
     {
       title: "Create lead",
       description:
-        "Create a Form Lead or Call Lead through the Vantage API so duplicate detection, Sheet Sync, and CRM posting stay on the official write path. Do not insert leads directly in Mongo.",
+        "Create a Form Lead through the Vantage API. Call Leads cannot be created manually; ordinary Call creation requires qualified RingCentral ingestion. Do not insert leads directly in Mongo.",
       inputSchema: createLeadInputSchema,
     },
     wrap(createLead),
   );
 
-  server.registerTool(
+  if (!options.manager) server.registerTool(
     "update_lead",
     {
       title: "Update lead",
@@ -121,7 +123,7 @@ export function registerVantageTools(server: McpServer) {
     wrap(updateLead),
   );
 
-  server.registerTool(
+  if (!options.manager) server.registerTool(
     "delete_lead",
     {
       title: "Delete lead",
@@ -133,13 +135,18 @@ export function registerVantageTools(server: McpServer) {
   );
 
   // Read-only canonical history over the main server's history routes; never Mongo.
-  for (const tool of HISTORY_TOOLS) {
+  for (const tool of [...HISTORY_TOOLS, ...BUSINESS_TOOLS]) {
     server.registerTool(
       tool.name,
-      { title: tool.title, description: tool.description, inputSchema: tool.inputSchema },
+      { title: tool.title, description: tool.description, inputSchema: tool.inputSchema,
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true } },
       wrap(tool.run as (input: unknown) => Promise<unknown>),
     );
   }
+
+  // The manager surface uses business reads only; technical Mongo exploration
+  // and administrative mutations remain on the original endpoint.
+  if (options.manager) return;
 
   server.registerTool(
     "mongo_list_databases",

@@ -7,6 +7,7 @@ import {
 import { runWithRequestContext } from "@/lib/request-context";
 import { registerVantageTools } from "@/lib/tools/register";
 import { VANTAGE_SERVER_INSTRUCTIONS } from "@/lib/company";
+import { registerManagerPrompts } from "@/lib/prompts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -14,11 +15,12 @@ export const maxDuration = 60;
 const mcpHandler = createMcpHandler(
   (server) => {
     registerVantageTools(server);
+    registerManagerPrompts(server);
   },
   {
     serverInfo: {
       name: "vantage-movers-mcp",
-      version: "0.1.0",
+      version: "0.2.0",
     },
     instructions: VANTAGE_SERVER_INSTRUCTIONS,
   },

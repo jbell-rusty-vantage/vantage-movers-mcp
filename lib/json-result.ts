@@ -14,6 +14,10 @@ export function redactUnknown(value: unknown, seen = new WeakSet<object>()): unk
     return value.map((item) => redactUnknown(item, seen));
   }
   if (value && typeof value === "object") {
+    if (value instanceof Date) return value.toISOString();
+    if ("_bsontype" in value && "toJSON" in value && typeof value.toJSON === "function") {
+      return value.toJSON();
+    }
     if (seen.has(value)) {
       return "[circular]";
     }
@@ -33,13 +37,48 @@ export function toToolText(value: unknown, maxChars = DEFAULT_MAX_CHARS): string
   if (text.length <= maxChars) {
     return text;
   }
-  return `${text.slice(0, maxChars)}\n…truncated ${text.length - maxChars} characters`;
+  const compact = JSON.stringify(redacted);
+  if (compact.length <= maxChars) return compact;
+  // Drop whole trailing records, never half a JSON document. Preserve summary fields
+  // and report every omitted array so a sample cannot masquerade as a total.
+  const omitted: Record<string, number> = {};
+  const envelope = {
+    output_coverage: {
+      complete: false,
+      reason: "response_budget",
+      instruction: "Partial output. Use a narrower view, smaller page or exact record. Do not total the returned sample.",
+      omitted_array_items: omitted,
+    },
+    result: redacted,
+  };
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const arrays: { path: string; value: unknown[]; size: number }[] = [];
+    function visit(item: unknown, path: string) {
+      if (!item || typeof item !== "object") return;
+      if (Array.isArray(item) && item.length) arrays.push({ path, value: item, size: JSON.stringify(item).length });
+      for (const [key, child] of Object.entries(item)) visit(child, `${path}/${key}`);
+    }
+    visit(redacted, "");
+    arrays.sort((a, b) => b.size - a.size);
+    const largest = arrays[0];
+    if (!largest) break;
+    const removed = largest.value.splice(Math.floor(largest.value.length / 2));
+    omitted[largest.path || "/"] = (omitted[largest.path || "/"] ?? 0) + removed.length;
+    const bounded = JSON.stringify(envelope);
+    if (bounded.length <= maxChars) return bounded;
+  }
+  return JSON.stringify({ ok: false, error: "RESPONSE_TOO_LARGE", output_coverage: { complete: false }, instruction: "Request a narrower view or smaller page; this result has been withheld rather than cut mid-record." });
 }
 
 export function toolTextResult(value: unknown, isError = false) {
+  const text = toToolText(value);
+  const apiFailure = !!value && typeof value === "object" && (
+    ("ok" in value && value.ok === false) ||
+    ("data" in value && !!value.data && typeof value.data === "object" && "ok" in value.data && value.data.ok === false)
+  );
   return {
-    content: [{ type: "text" as const, text: toToolText(value) }],
-    isError,
+    content: [{ type: "text" as const, text }],
+    isError: isError || apiFailure || text.includes('"error":"RESPONSE_TOO_LARGE"'),
   };
 }
 

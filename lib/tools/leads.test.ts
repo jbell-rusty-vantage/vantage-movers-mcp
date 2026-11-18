@@ -37,12 +37,12 @@ test("createLeadInputSchema enforces form identity and move facts", () => {
   assert.equal(parsed.move_size, "Studio");
 });
 
-test("createLeadInputSchema accepts a job-number-only call lead", () => {
-  const parsed = createLeadInputSchema.parse({
+test("createLeadInputSchema rejects manual Call Lead creation", () => {
+  const parsed = createLeadInputSchema.safeParse({
     kind: "call",
     job_no: "P5556278",
   });
-  assert.equal(parsed.job_no, "P5556278");
+  assert.equal(parsed.success, false);
 });
 
 test("deleteLeadInputSchema requires an explicit confirm", () => {

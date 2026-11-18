@@ -55,7 +55,14 @@ export async function findLeadCandidates(input: z.infer<typeof findLeadCandidate
 }
 
 export async function getLeadHistory(input: z.infer<typeof getLeadHistoryInputSchema>, api: HistoryApi = vantageApi) {
-  return history(api, "/lead", { model: input.model, id: input.id });
+  const result = await history(api, "/lead", { model: input.model, id: input.id });
+  return { ...result, evidence_coverage: {
+    complete_history: "not_guaranteed",
+    source: "materialized_business_facts",
+    includes_granot_observations: false,
+    limits: { contact_numbers: 50, entity_changes: 50, bookings: 10, cancellations: 10, lead_messages: 50 },
+    warning: "History is bounded. Treat missing or redacted history as unknown.",
+  } };
 }
 
 /** Tool catalog for the general endpoint; `register.ts` binds each entry with `wrap`. */
@@ -80,7 +87,7 @@ export const HISTORY_TOOLS = [
     name: "get_lead_history",
     title: "Get lead history",
     description:
-      "One Form Lead or Call Lead with what Vantage recorded about it: the Lead projection (name, phone, job number, source, Granot Priority, quoted, move views, receiving rep, flags; never the email), the Contact Numbers that link to it, the newest 50 entity changes with before/after per path and source system, the newest 20 Granot observations for its job number, bookings, cancellations and Lead Messages (purpose, status, timestamps; never the body). Use instead of get_lead when the past matters.",
+      "Read a Lead's saved origin, current facts, linked Contact Numbers, Entity Changes, official Bookings and Cancellations, and message delivery metadata. Granot updates appear in the saved business facts. Use the limits in evidence_coverage when interpreting missing history.",
     inputSchema: getLeadHistoryInputSchema,
     run: getLeadHistory,
   },
