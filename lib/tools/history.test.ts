@@ -58,7 +58,9 @@ test("history tools call the retained history routes with the right path and que
 test("history tool results are the formatted API result", async () => {
   const { api } = fakeApi();
   const result = await getLeadHistory({ model: "FormLead", id }, api);
-  assert.deepEqual(result, { ok: true, status: 200, data: { ok: true, data: { echo: `${HISTORY_PREFIX}/lead` } } });
+  assert.deepEqual(result.data, { ok: true, data: { echo: `${HISTORY_PREFIX}/lead` } });
+  assert.equal(result.evidence_coverage.complete_history, "not_guaranteed");
+  assert.equal(result.evidence_coverage.limits.granot_observations, 20);
 });
 
 test("history tool catalog holds only the retained read-only tools", () => {

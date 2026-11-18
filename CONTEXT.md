@@ -1,23 +1,14 @@
 # Vantage Movers MCP
 
-Remote Model Context Protocol server for agents that need the Granot / Vantage backend and a dedicated read-only MongoDB Atlas surface.
+Remote owner/manager reporting and separate administrative tools. Shared vocabulary and owner policies live in ../CONTEXT.md and ../AGENTS.md.
 
-**System of Record for leads:** the Vantage API, not raw Mongo writes. Lead create / update / delete go through `vantage-movers-main-server` so duplicate detection, Sheet Sync, and CRM posting stay on the official path.
+- /api/manager-mcp exposes read-only business tools and six prompts; no raw Mongo or Lead mutations.
+- /api/mcp retains those reads/prompts and administrative tools.
+- Both use the shared API secret; endpoint selection is not a separate credential or role boundary.
+- Main API owns reporting, Call admission/billability, live pricing, official outcomes and archive restoration. Do not reproduce those invariants in MCP aggregations.
+- Business analytics/admin browse are production-only. TEST_MODE only changes raw Mongo defaults.
+- Manual create_lead supports Forms only. Ordinary Calls require qualified RingCentral ingestion. Preserve closed historical/final-import Best Relocation exceptions without authorizing more ingestion.
+- Canonical Lead history merges hot/cold exact-job Granot observations. Bounded results have no completeness guarantee; missing evidence is unknown. API/archive failures remain failures.
+- Intake queues, Owner Job Timeline and detailed Outreach require signed dashboard actors unavailable here. Do not bypass those gates.
 
-## Auth
-
-Agents must send `VANTAGE_API_SECRET` in MCP client configuration:
-
-- `Authorization: Bearer <VANTAGE_API_SECRET>`
-- or `x-api-secret: <VANTAGE_API_SECRET>`
-
-The server verifies that value against the `VANTAGE_API_SECRET` env var (required in production) and copies it onto outbound API calls as `x-api-secret`.
-
-## Tools in this slice
-
-- Lead search, list, get, create, update, delete for Form Leads and Call Leads
-- `vantage_health`
-- Read-only history tools over the main server's `/api/v1/internal/sales-intelligence/history/*` routes: `find_contact_number`, `find_lead_candidates`, `get_lead_history`. They return canonical records and provider metadata only; nothing returns an analysis, a conversation, a Move assessment, an Outreach record, transcript text, a Lead Message body or an email.
-- Read-only Mongo tools named after the official MongoDB MCP server: list databases / collections, schema, indexes, find, aggregate, count, db stats
-
-`$out` and `$merge` are blocked. Lead mutations must not use `mongo_find` / `mongo_aggregate`.
+See README.md for tool/environment contracts and docs/MANAGER-GUIDE.md for paste-ready prompts. Mongo tools are our own driver implementation, not the official MongoDB MCP connection. Lead mutations use the Vantage API only.

@@ -1,125 +1,64 @@
 # Vantage Movers MCP
 
-Remote [Model Context Protocol](https://modelcontextprotocol.io) server so agents can use the Granot / Vantage backend and query MongoDB Atlas from one place.
+Remote MCP for owner and manager reporting. Start with the [manager guide](docs/MANAGER-GUIDE.md) for six ready-to-use prompts.
 
-Hosted on Vercel with [`mcp-handler`](https://github.com/vercel/mcp-handler) v2 and Next.js. That is the current Vercel-supported path: Streamable HTTP plus the 2026-07-28 MCP spec, no Redis, no long-lived stdio process.
+## Connections
 
-## Why this library
-
-| Option | Verdict |
+| Endpoint | Tools |
 | --- | --- |
-| **mcp-handler v2 + Next.js** | Chosen. Official Vercel adapter, Fluid compute, Zod 4 tool schemas, works in Cursor as a URL. |
-| xmcp | Fine file-based alternative. Extra framework for a small tool set. |
-| Official MongoDB MCP stdio server | Excellent locally. Cannot be spawned on Vercel Functions. This server implements the same *read* tools with the official `mongodb` driver instead. |
+| /api/manager-mcp | Read-only business analytics, official Bookings/Cancellations, catalog, Booking-origin trace, customer/Lead history and six review prompts. No raw Mongo. |
+| /api/mcp | Those reads/prompts plus existing Lead administration, health and custom Mongo reads. |
 
-## Required MCP configuration
+Production host: https://vantage-movers-mcp.vercel.app. New functionality requires deployment.
 
-`VANTAGE_API_SECRET` is required in the client config. The server puts that value on the `x-api-secret` header when it calls `https://vantage-movers-main-server.vercel.app`.
+Configure a Streamable HTTP client with URL https://vantage-movers-mcp.vercel.app/api/manager-mcp and header Authorization: Bearer <VANTAGE_API_SECRET> (or x-api-secret). Never put secrets into prompts. Both endpoints use the existing shared API secret: the manager endpoint restricts available tools, but **is not a separate credential or role boundary**. The same credential accesses the administrative endpoint and main API. A manager-specific credential requires a separate authorization change before treating this as delegated access.
 
-Cursor / Claude-style Streamable HTTP:
+## Business tools
 
-```json
-{
-  "mcpServers": {
-    "vantage-movers": {
-      "url": "https://vantage-movers-mcp.vercel.app/api/mcp",
-      "headers": {
-        "Authorization": "Bearer <VANTAGE_API_SECRET>"
-      }
-    }
-  }
-}
-```
-
-`x-api-secret` is accepted as well if a client prefers the Vantage header name:
-
-```json
-{
-  "mcpServers": {
-    "vantage-movers": {
-      "url": "https://vantage-movers-mcp.vercel.app/api/mcp",
-      "headers": {
-        "x-api-secret": "<VANTAGE_API_SECRET>"
-      }
-    }
-  }
-}
-```
-
-Do not put the secret in `env` for a remote URL. HTTP MCP clients only send `headers`. `env` is for local stdio servers.
-
-Production also stores `VANTAGE_API_SECRET` on the Vercel project so a public URL cannot open Mongo with a made-up token. The client value must match.
-
-## MongoDB
-
-The official MongoDB MCP server is stdio. This deployment keeps a dedicated Mongo surface in-process:
-
-- `mongo_list_databases`
-- `mongo_list_collections`
-- `mongo_collection_schema`
-- `mongo_collection_indexes`
-- `mongo_find`
-- `mongo_aggregate`
-- `mongo_count`
-- `mongo_db_stats`
-
-Read-only. `$out` and `$merge` are rejected. Default database is `vantagemovers` (or `testvantagemovers` when `TEST_MODE=true`).
-
-Use lead tools for Form / Call Lead writes. Raw Mongo mutations would skip Sheet Sync and CRM posting.
-
-## First tool slice
-
-| Tool | Backend |
+| Tool | Purpose |
 | --- | --- |
-| `search_leads` | `POST /api/v1/{form,call}-leads/search` |
-| `list_leads` | `GET /api/v1/{form,call}-leads` |
-| `get_lead` | `GET /api/v1/{form,call}-leads/:id` |
-| `create_lead` | `POST /api/v1/{form,call}-leads` |
-| `update_lead` | `PATCH /api/v1/{form,call}-leads/:id` |
-| `delete_lead` | `DELETE /api/v1/{form,call}-leads/:id` |
-| `vantage_health` | `GET /health`, `GET /db` |
+| get_business_analytics | Canonical Insights overview, sources, team or bookings view with period, comparisons, live Lead costs, definitions and data quality. |
+| get_reporting_catalog | Source Companies, Source Granularities, reps and merchants including inactive entries. Cached five minutes; failed subcatalog loads can appear empty. |
+| list_bookings / get_booking | Paginated official Bookings and exact detail. |
+| list_cancellations / get_cancellation | Paginated official Cancellations and exact detail. |
+| trace_booking_origin | Booking → exact saved Lead model/id → canonical history. Distinguishes Referral, Leadless and unknown origin; no same-phone inference. |
+| find_contact_number / find_lead_candidates | Number call rollup, current Lead link, other Leads, candidate identities and Owner exclusions. |
+| get_lead_history | Canonical Lead facts, changes, exact-job Granot evidence, official outcomes and message metadata. |
 
-## History tools (read-only)
+Business analytics and admin browse read **production**, regardless of MCP TEST_MODE. History follows the main server configuration. Money is dollars, rates are fractions. Source/receiver conversion follows a Lead cohort; period activity is a different basis. Preserve the API's definitions, comparison coverage and quality flags. Sales credit comes from Booking Agent Allocations, not current receiver assignment. Split-agent Booking counts do not sum to company distinct Bookings. Binder is not profit.
 
-The general endpoint also exposes read-only history tools backed by the main server's `GET /api/v1/internal/sales-intelligence/history/*` routes (authenticated with the same `x-api-secret`; never raw Mongo). The server answers 404 on them while its `SALES_INTELLIGENCE_ENABLED` flag is off, and refuses the retired Sales Intelligence scoped key. They return canonical records and provider metadata: names, E.164 numbers, job numbers, attachments, entity changes, Granot observations, bookings and message metadata. They never return call analyses, conversations, Move assessments, Outreach records, transcript text, Lead Message bodies or emails.
+Analytics ranking arrays use page/page_size (default two rows per array) and report_scope totals/has_next_page. Follow every page to compare all Sources or reps; whole-filter scorecards remain intact on every page. Sources selects one source_breakdown (companies with feed children, move type, pickup states or lanes). Sparklines are omitted unless include_series is requested. This keeps ordinary reviews within the response budget.
 
-| Tool | Backend | Use it for |
-| --- | --- | --- |
-| `find_contact_number` | `GET …/history/contact-number` | Phone or id → Contact Number, call rollups, attachment edges. Start here. |
-| `find_lead_candidates` | `GET …/history/lead-candidates` | Which Leads a number could belong to |
-| `get_lead_history` | `GET …/history/lead` | Lead projection, attachments, entity changes, Granot observations, bookings, cancellations, messages (no bodies) |
+The [golden query set](docs/GOLDEN-QUERIES.md) covers manager inspection scenarios. The read-only live verifier is ops/verify-manager-mcp.ts: run with the existing credential loaded privately and argument local or the production manager URL. It prints scenario results only, never customer records or credentials.
 
-The server-slimming release (2026-10) retired the AI analysis tools `list_analyses`, `get_analysis`, `get_conversation`, `get_move_assessment`, `get_prior_analyses` and `get_subject_story`, and the scoped `/api/intelligence-mcp` endpoint with its envelope schema and analysis prompt. The main server removes their routes in the same release. This build only calls the three retained routes, which exist before and after that server change, so it can deploy first.
+Booking/Cancellation browse accepts start_date/end_date for full business dates on default Book/Cancel Date fields, stored as UTC calendar dates. Actual timestamp fields use explicit from/to instants. Do not mix modes or confuse these stored calendar dates with true New York midnight instants.
 
-Later slices: Granot syncs, Owner Registry items, booking cases.
+Intake-case queues, detailed Outreach cadence performance, Owner Job Timeline, allocation-cost and Money require signed dashboard actors that this connection does not carry. Use the authorized Admin dashboard. There are no intake confirmation, cancellation creation or message-send tools here.
 
-## Local
+## History and retention
 
-```bash
-pnpm install
-cp .env.example .env.local
-# fill VANTAGE_API_SECRET and MONGO_URI
-pnpm test
-pnpm typecheck
-pnpm dev
-```
+The main server merges hot and archived exact-job Granot observations and fails the read on archive errors. Routine eligible superseded no-effect automation chains may leave live collections after conditional seven-day retention; this is not blanket deletion of all history. Prefer canonical history over raw Mongo for journeys.
 
-MCP URL locally: `http://localhost:3100/api/mcp`
+History bounds: 50 Contact Numbers, 50 entity changes, 20 Granot observations, 10 Bookings, 10 Cancellations and 50 Lead Messages. There is no complete-history or has_more guarantee. Number/call activity may also be retained/redacted independently. Missing evidence is unknown, not proof of no event. History excludes email, transcript text and message bodies. A disabled feature may return 404.
 
-## Deploy
+API failures become MCP errors. Oversized output stays valid JSON, removing whole array records with explicit output_coverage omissions while preserving summary fields. Indivisible oversized responses fail explicitly. Never total a partial page or transport-trimmed array.
 
-Production is Vercel CLI only. The project is not Git-connected. Agents follow [`.agents/skills/deploy-vantage-movers-mcp/SKILL.md`](../.agents/skills/deploy-vantage-movers-mcp/SKILL.md).
+## Administrative and Mongo tools
 
-```bash
-npx --yes vercel --prod --yes --scope vantage-4d3db9ef
-```
+The original endpoint retains search_leads, list_leads, get_lead, update_lead, delete_lead, create_lead and vantage_health. Manual creation supports **Form Leads only**. Ordinary Call creation requires qualified RingCentral ingestion. Preserve closed historical/final-import Best Relocation exceptions; another import is not authorized.
 
-## Environment
+The mongo_* tools are our custom implementation using the MongoDB driver, **not an embedded official MongoDB MCP connection**. They list databases/collections/indexes/schema and run read-only find, aggregate, count and stats. $out and $merge are blocked. Raw reads do not implement canonical qualification, billing, live pricing or archive restoration.
 
-| Name | Where | Role |
-| --- | --- | --- |
-| `VANTAGE_API_SECRET` | Vercel + MCP client headers | Auth to this server and to the Vantage API |
-| `VANTAGE_API_BASE_URL` | Vercel, optional | Defaults to production |
-| `MONGO_URI` | Vercel only | Atlas connection for Mongo tools |
-| `MONGO_DATABASE_NAME` | Vercel, optional | Overrides the default database name |
-| `TEST_MODE` | optional | Switches the default database to `testvantagemovers` |
+## Development and release
+
+Next.js, mcp-handler and the MCP server SDK provide Streamable HTTP. Run pnpm install, copy .env.example to .env.local privately, then pnpm test, pnpm typecheck and pnpm build. pnpm dev serves http://localhost:3100/api/manager-mcp.
+
+Production is CLI-only, not Git-connected. Follow the [deployment skill](../.agents/skills/deploy-vantage-movers-mcp/SKILL.md); Git push does not deploy.
+
+| Environment name | Role |
+| --- | --- |
+| VANTAGE_API_SECRET | Shared server/client authentication and outbound main API secret |
+| VANTAGE_API_BASE_URL | Optional main API URL, defaults to production |
+| MONGO_URI | Atlas connection for technical Mongo tools only |
+| MONGO_DATABASE_NAME | Optional raw Mongo database override |
+| TEST_MODE | Changes raw Mongo default to testvantagemovers, not production analytics/admin reads |

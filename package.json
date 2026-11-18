@@ -11,7 +11,7 @@
     "test": "node --import tsx --test \"lib/**/*.test.ts\""
   },
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

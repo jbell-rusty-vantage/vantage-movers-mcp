@@ -55,7 +55,13 @@ export async function findLeadCandidates(input: z.infer<typeof findLeadCandidate
 }
 
 export async function getLeadHistory(input: z.infer<typeof getLeadHistoryInputSchema>, api: HistoryApi = vantageApi) {
-  return history(api, "/lead", { model: input.model, id: input.id });
+  const result = await history(api, "/lead", { model: input.model, id: input.id });
+  return { ...result, evidence_coverage: {
+    complete_history: "not_guaranteed",
+    granot_observations: "Canonical server merges exact-job hot and archived observations; archive failures fail the read.",
+    limits: { contact_numbers: 50, entity_changes: 50, granot_observations: 20, bookings: 10, cancellations: 10, lead_messages: 50 },
+    warning: "No has_more contract. Missing or expired/redacted evidence is unknown; not proof of no event. No transcript or message bodies are supplied.",
+  } };
 }
 
 /** Tool catalog for the general endpoint; `register.ts` binds each entry with `wrap`. */
@@ -80,7 +86,7 @@ export const HISTORY_TOOLS = [
     name: "get_lead_history",
     title: "Get lead history",
     description:
-      "One Form Lead or Call Lead with what Vantage recorded about it: the Lead projection (name, phone, job number, source, Granot Priority, quoted, move views, receiving rep, flags; never the email), the Contact Numbers that link to it, the newest 50 entity changes with before/after per path and source system, the newest 20 Granot observations for its job number, bookings, cancellations and Lead Messages (purpose, status, timestamps; never the body). Use instead of get_lead when the past matters.",
+      "One Lead's canonical origin, current facts, Contact Numbers, entity changes, exact-job Granot observations merged from hot storage and archives, official Bookings/Cancellations and message metadata. Bounded history, never a completeness guarantee: see evidence_coverage limits. Archive errors fail the read; absent evidence is unknown, not proof of no activity. No email, transcript or message body. Use instead of raw Mongo when the past matters.",
     inputSchema: getLeadHistoryInputSchema,
     run: getLeadHistory,
   },
