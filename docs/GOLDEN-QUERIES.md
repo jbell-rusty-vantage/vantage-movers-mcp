@@ -10,7 +10,7 @@ Period: November 1–8, 2026, New York business dates, ending exclusively Novemb
 
 Alice and Bob each participate in two Bookings: four rep participations, **three distinct company Bookings**. Allocated Binder totals are $1,800 and $1,200. Casey currently receives the Leads and has two cohort Bookings; Casey is not inferred to be a credited salesperson. Fixture Merchant has three Bookings and $3,000 Binder. One official Cancellation has $250 Refund and concerns a Booking from before the period.
 
-One official Booking links exactly to a WordPress-created Form Lead. A RingCentral-qualified, Form Fill Call Lead shares the phone; it does not replace that origin. Other cases are explicitly Referral, Leadless or unknown. A retained older Granot observation reaches MCP through canonical history; this tests preservation, not physical archive restoration.
+One official Booking links exactly to a WordPress-created Form Lead. A RingCentral-qualified, Form Fill Call Lead shares the phone; it does not replace that origin. Other cases are explicitly Referral, Leadless or unknown. A saved Entity Change records the Granot update in the linked Lead history.
 
 ## Queries and expected evidence
 
@@ -29,13 +29,13 @@ One official Booking links exactly to a WordPress-created Form Lead. A RingCentr
 | G11 | Inspect the official Booking and its split. | get_booking retains Alice/Bob allocations, Casey's different receiver identity and $1,000 Binder. |
 | G12 | Which official Cancellations refunded at least $200 on November 8? | Cancellation-date browse preserves complete date bounds, $250 Refund and pagination. |
 | G13 | Inspect this Cancellation's Booking reference. | Exact cancellation detail retains the canonical Booking id. |
-| G14 | Trace this Booking's original Lead. | Booking → saved Form model/id → canonical history. Same-phone Call is not queried or adopted; WordPress origin, older observation and bounded-history warning survive. |
+| G14 | Trace this Booking's original Lead. | Booking → saved Form model/id → canonical history. Same-phone Call is not queried or adopted; WordPress origin, dated Entity Change and bounded-history warning survive. |
 | G15 | Where did this Referral Booking come from? | origin_status=referral, no inferred Lead and no history lookup. |
 | G16 | Where did this Leadless Booking come from? | origin_status=leadless, no inferred Lead and no history lookup. |
 | G17 | What if a Booking has only a matching phone/job? | origin_status=unknown, no phone/job origin guess. |
 | G18 | Is this number Waiting on us? | Canonical waiting_since, settled last call, call rollup and Owner exclusions survive; MCP does not recompute the status. |
 | G19 | Which Leads could this number belong to? | Candidates remain distinct; excluded Call candidate stays excluded. Repeated job/form reference parameters survive URL encoding. |
-| G20 | What happens if the archive read fails? | HTTP 500 becomes MCP isError=true, not empty observations or successful hot-only history. |
+| G20 | What happens if the business history read fails? | The MCP returns the API failure as isError=true. |
 | G21 | What if history is unavailable/disabled? | HTTP 404 is an error, not proof of no Lead activity. |
 | G22 | What if an official Booking is missing? | Exact 404 remains an MCP error. |
 | G23 | What if Booking is found but its origin history fails? | Trace fails explicitly, preserving official Booking context and history error. |
@@ -53,6 +53,6 @@ One official Booking links exactly to a WordPress-created Form Lead. A RingCentr
 
 Execution on November 9, 2026: all 32 golden questions passed across 28 grouped fixture tests/subtests; the complete repository suite passed 76 tests and typecheck passed. Questions G29–G32 explicitly exercise ranking pagination, source breakdown selection and opt-in series. The golden questions are grouped into related test scenarios, so question count and test count differ.
 
-Success requires all fixture assertions plus the existing tests and typecheck to pass. Deployment smoke checks must separately exercise the real production MCP URL and authentication. A passing fixture set proves transport/schema/selection/error behavior against fixed inputs; it does not prove that an installed client will choose every correct tool, that every cold archive is restorable, or that every production record has complete provenance.
+Success requires all fixture assertions plus the existing tests and typecheck to pass. Deployment smoke checks must separately exercise the real production MCP URL and authentication. A passing fixture set proves transport/schema/selection/error behavior against fixed inputs; it does not prove that an installed client will choose every correct tool, or that every production record has complete provenance.
 
 Intake-case queue, detailed Outreach cadence performance and Owner Job Timeline remain outside the API-secret connection's signed-dashboard authority. Manager tool discovery must not imply those reads work. The manager endpoint's read-only tool set also does not convert the existing shared administrative credential into a separate manager role.

@@ -37,9 +37,9 @@ Intake-case queues, detailed Outreach cadence performance, Owner Job Timeline, a
 
 ## History and retention
 
-The main server merges hot and archived exact-job Granot observations and fails the read on archive errors. Routine eligible superseded no-effect automation chains may leave live collections after conditional seven-day retention; this is not blanket deletion of all history. Prefer canonical history over raw Mongo for journeys.
+The main server reads saved Lead facts, linked Contact Numbers, Entity Changes, official Bookings and Cancellations, and message delivery metadata. Granot updates appear through the business changes they produced. Daily history work uses these records directly.
 
-History bounds: 50 Contact Numbers, 50 entity changes, 20 Granot observations, 10 Bookings, 10 Cancellations and 50 Lead Messages. There is no complete-history or has_more guarantee. Number/call activity may also be retained/redacted independently. Missing evidence is unknown, not proof of no event. History excludes email, transcript text and message bodies. A disabled feature may return 404.
+History bounds: 50 Contact Numbers, 50 entity changes, 10 Bookings, 10 Cancellations and 50 Lead Messages. There is no complete-history or has_more guarantee. Number/call activity may also be retained/redacted independently. Missing evidence is unknown, not proof of no event. History excludes email, transcript text and message bodies. A disabled feature may return 404.
 
 API failures become MCP errors. Oversized output stays valid JSON, removing whole array records with explicit output_coverage omissions while preserving summary fields. Indivisible oversized responses fail explicitly. Never total a partial page or transport-trimmed array.
 

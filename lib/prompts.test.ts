@@ -19,7 +19,7 @@ test("all manager prompts register through the installed SDK", () => {
     assert.equal(response.messages[0].role, "user");
     assert.equal(response.messages[0].content.type, "text");
     const text = response.messages[0].content.text;
-    for (const required of ["America/New_York", "denominator", "agent_allocations", "receiver_agent", "Cancellation", "archive", "unknown", "billability", "read-only", '"period":"last week"']) {
+    for (const required of ["America/New_York", "denominator", "agent_allocations", "receiver_agent", "Cancellation", "Entity Changes", "unknown", "billability", "read-only", '"period":"last week"']) {
       assert.ok(text.includes(required), `${prompt.name} missing ${required}`);
     }
   }

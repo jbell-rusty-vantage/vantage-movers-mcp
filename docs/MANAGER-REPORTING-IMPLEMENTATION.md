@@ -7,7 +7,7 @@ The owner can review source and rep performance and trace an official Booking to
 - Read-only `/api/manager-mcp`, with business reads and prompts; administrative and raw Mongo tools remain on `/api/mcp`.
 - Seven business tools: canonical Insights views, reporting catalog, paginated official Booking/Cancellation browse and detail, exact-link Booking-origin trace.
 - Business-day filters span entire stored Book/Cancel dates. Date mode and actual instant mode cannot be mixed.
-- Lead history continues to use the main server's hot/archive merger. Limits and absence of completeness guarantees are explicit, including on origin traces. No raw historical evidence aggregation was introduced.
+- Lead history uses materialized business facts from the main server. The history tool and linked Booking origin traces return the same coverage and limits.
 - Form-only manual creation closes the stale advertised Call creation path. Supported historical Call admissions and official outcomes remain untouched.
 - Failed API envelopes become MCP errors. Output budgeting removes whole array records with omission metadata rather than cutting JSON mid-record. Oversized indivisible output fails explicitly.
 
@@ -31,6 +31,6 @@ The history API has bounded sections without `has_more` or source completeness m
 ## Ownership references
 
 - Main server: `src/routes/insights-admin.routes.ts`, `src/services/insights/`, `src/services/admin/adminBrowse.service.ts`, `src/services/admin/adminFacets.service.ts`.
-- History: `src/routes/sales-intelligence-history.routes.ts`, `src/services/salesIntelligence/history/reads.ts`, `src/services/granotHistory/archiveReads.ts`.
+- History: `src/routes/sales-intelligence-history.routes.ts`, `src/services/salesIntelligence/history/reads.ts`.
 - Policy: workspace `CONTEXT.md`, `AGENTS.md`, main-server `docs/call-lead-billing.md`, `docs/knowledge/granot-lifecycle/storage-retention-operations.md`.
 - Access boundary: main-server `src/services/operationsRegistry/trustedActor.ts`, intake and Outreach routes. No changes to those contracts.

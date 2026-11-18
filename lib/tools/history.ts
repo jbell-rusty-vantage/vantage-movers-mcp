@@ -58,9 +58,10 @@ export async function getLeadHistory(input: z.infer<typeof getLeadHistoryInputSc
   const result = await history(api, "/lead", { model: input.model, id: input.id });
   return { ...result, evidence_coverage: {
     complete_history: "not_guaranteed",
-    granot_observations: "Canonical server merges exact-job hot and archived observations; archive failures fail the read.",
-    limits: { contact_numbers: 50, entity_changes: 50, granot_observations: 20, bookings: 10, cancellations: 10, lead_messages: 50 },
-    warning: "No has_more contract. Missing or expired/redacted evidence is unknown; not proof of no event. No transcript or message bodies are supplied.",
+    source: "materialized_business_facts",
+    includes_granot_observations: false,
+    limits: { contact_numbers: 50, entity_changes: 50, bookings: 10, cancellations: 10, lead_messages: 50 },
+    warning: "History is bounded. Treat missing or redacted history as unknown.",
   } };
 }
 
@@ -86,7 +87,7 @@ export const HISTORY_TOOLS = [
     name: "get_lead_history",
     title: "Get lead history",
     description:
-      "One Lead's canonical origin, current facts, Contact Numbers, entity changes, exact-job Granot observations merged from hot storage and archives, official Bookings/Cancellations and message metadata. Bounded history, never a completeness guarantee: see evidence_coverage limits. Archive errors fail the read; absent evidence is unknown, not proof of no activity. No email, transcript or message body. Use instead of raw Mongo when the past matters.",
+      "Read a Lead's saved origin, current facts, linked Contact Numbers, Entity Changes, official Bookings and Cancellations, and message delivery metadata. Granot updates appear in the saved business facts. Use the limits in evidence_coverage when interpreting missing history.",
     inputSchema: getLeadHistoryInputSchema,
     run: getLeadHistory,
   },

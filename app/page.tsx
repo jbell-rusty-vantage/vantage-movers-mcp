@@ -42,8 +42,8 @@ export default function HomePage() {
       <h2>What the assistant can review</h2>
       <p>
         Canonical source and rep reports, live Lead costs, official outcomes,
-        exact Booking-to-Lead links and retained customer history. Archived
-        Granot evidence is read through the main server. Missing evidence is
+        exact Booking-to-Lead links and customer history from saved Lead facts,
+        Entity Changes and message delivery records. Missing evidence is
         reported as unknown. Intake queues and detailed Outreach cadence
         performance currently require the authorized Admin dashboard.
       </p>

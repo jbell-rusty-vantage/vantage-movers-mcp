@@ -31,7 +31,7 @@ const form = { _id: FORM, name: "Fixture Customer", phone_number: PHONE, job_no:
 const call = { _id: CALL, name: "Fixture Customer", phone_number: PHONE, source_company: "fixture_source", source_granularity_key: "fixture_call", ingestion_origin: "ringcentral", form_fill: true, call_qualification: { qualified: true, qualification_version: "fixture" } };
 const booking = { _id: BOOKING, job_no: "FIX-100", lead_model: "FormLead", lead_ref: form, source: "Fixture Source", book_date: "2026-11-08T00:00:00.000Z", merchant: "Fixture Merchant", total_binder_amount: 1000, deposit_amount: 400, agent_allocations: [{ agent_name_snapshot: "Fixture Alice", binder_amount: 600 }, { agent_name_snapshot: "Fixture Bob", binder_amount: 400 }] };
 const cancellation = { _id: CANCEL, booked_lead: EARLIER_BOOKING, job_no: "FIX-090", book_date: "2026-10-15T00:00:00.000Z", cancel_date: "2026-11-08T00:00:00.000Z", refund_amount: 250, source: "Fixture Source", reason: "Customer changed plans" };
-const history = { lead: { model: "FormLead", id: FORM, ingestion_origin: "wordpress_form", source_company: "fixture_source", receiver_agent_id: "casey", flags: { booked: true, cancelled: false } }, contact_numbers: [{ contact_number_id: CALL, e164: PHONE, link: "lead", link_source: "owner" }], changes: [], granot_observations: [{ id: "fixture-older-observation", job_no: "FIX-100", captured_at: "2026-10-01T12:00:00.000Z", priority: "Quoted" }], bookings: [{ id: BOOKING, job_no: "FIX-100" }], cancellations: [], messages: [] };
+const history = { lead: { model: "FormLead", id: FORM, ingestion_origin: "wordpress_form", source_company: "fixture_source", receiver_agent_id: "casey", flags: { booked: true, cancelled: false } }, contact_numbers: [{ contact_number_id: CALL, e164: PHONE, link: "lead", link_source: "owner" }], changes: [{ id: "fixture-change", source_system: "granot_lifecycle", applied_at: "2026-10-01T12:00:00.000Z", changed_paths: ["granot_priority"] }], bookings: [{ id: BOOKING, job_no: "FIX-100" }], cancellations: [], messages: [] };
 
 type Expected = { path: string; method?: string; data?: unknown; status?: number; inspect?: (url: URL, init: RequestInit) => void };
 async function decode(response: Response) {
@@ -148,7 +148,8 @@ test("G14: origin trace follows only the saved Form link despite a same-phone Ca
   const { wire, body } = await tool("trace_booking_origin", { id: BOOKING });
   assert.equal(wire.isError, false); assert.equal(body.data.data.origin_status, "linked_lead");
   assert.equal(body.data.data.lead_history.lead.ingestion_origin, "wordpress_form");
-  assert.equal(body.data.data.lead_history.granot_observations[0].captured_at, "2026-10-01T12:00:00.000Z");
+  assert.equal(body.data.data.lead_history.changes[0].applied_at, "2026-10-01T12:00:00.000Z");
+  assert.equal(body.evidence_coverage.includes_granot_observations, false);
   assert.equal(body.data.data.lead_history.contact_numbers[0].contact_number_id, CALL);
   assert.equal(body.evidence_coverage.complete_history, "not_guaranteed");
 }));
@@ -170,17 +171,17 @@ test("G18–G19: settled number summary and candidate exclusions survive a call 
   assert.equal(candidates.length, 2); assert.equal(candidates[1].link, "excluded");
 }));
 
-test("G20–G22: archive failure, unavailable history and missing official Booking are errors, not empty evidence", async t => {
+test("G20–G22: business-history read failure, unavailable history and missing official Booking are errors, not empty evidence", async t => {
   for (const [name, toolName, args, response] of [
-    ["archive integrity failure", "get_lead_history", { model: "FormLead", id: FORM }, { path: `${PREFIX}/lead`, status: 500, data: { ok: false, error: "Archive verification unavailable" } }],
+    ["business-history read failure", "get_lead_history", { model: "FormLead", id: FORM }, { path: `${PREFIX}/lead`, status: 500, data: { ok: false, error: "Lead history temporarily unavailable" } }],
     ["disabled history", "get_lead_history", { model: "CallLead", id: CALL }, { path: `${PREFIX}/lead`, status: 404, data: { ok: false, error: "Not found" } }],
     ["missing Booking", "get_booking", { id: BOOKING }, { path: `/api/v1/admin/booked-leads/${BOOKING}`, status: 404, data: { ok: false, error: "Not found" } }],
   ] as const) await t.test(name, () => fixture([response], async ({ tool }) => { const { wire, body } = await tool(toolName, args); assert.equal(wire.isError, true); assert.equal(body.ok, false); assert.equal(body.status, response.status); }));
 });
 
-test("G23: linked origin trace fails closed on archive error while retaining official Booking context", () => fixture([
+test("G23: linked origin trace fails closed on history error while retaining official Booking context", () => fixture([
   { path: `/api/v1/admin/booked-leads/${BOOKING}`, data: success(booking) },
-  { path: `${PREFIX}/lead`, status: 500, data: { ok: false, error: "Archive verification unavailable" } },
+  { path: `${PREFIX}/lead`, status: 500, data: { ok: false, error: "Lead history temporarily unavailable" } },
 ], async ({ tool }) => { const { wire, body } = await tool("trace_booking_origin", { id: BOOKING }); assert.equal(wire.isError, true); assert.equal(body.data.booking._id, BOOKING); assert.equal(body.data.history_error.ok, false); }));
 
 test("G24: oversized page keeps totals, parseable whole records and explicit transport omissions", () => {

@@ -60,7 +60,9 @@ test("history tool results are the formatted API result", async () => {
   const result = await getLeadHistory({ model: "FormLead", id }, api);
   assert.deepEqual(result.data, { ok: true, data: { echo: `${HISTORY_PREFIX}/lead` } });
   assert.equal(result.evidence_coverage.complete_history, "not_guaranteed");
-  assert.equal(result.evidence_coverage.limits.granot_observations, 20);
+  assert.equal(result.evidence_coverage.source, "materialized_business_facts");
+  assert.equal(result.evidence_coverage.includes_granot_observations, false);
+  assert.deepEqual(result.evidence_coverage.limits, { contact_numbers: 50, entity_changes: 50, bookings: 10, cancellations: 10, lead_messages: 50 });
 });
 
 test("history tool catalog holds only the retained read-only tools", () => {
